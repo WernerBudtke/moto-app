@@ -26,18 +26,10 @@ export default function LastRideScreen() {
   let initialPoint = parsedRoute[0];
   let lastPoint = parsedRoute[parsedRoute.length - 1];
 
-  const minLat = Math.min(
-    ...parsedRoute.map((point: { latitude: number }) => point.latitude)
-  );
-  const maxLat = Math.max(
-    ...parsedRoute.map((point: { latitude: number }) => point.latitude)
-  );
-  const minLng = Math.min(
-    ...parsedRoute.map((point: { longitude: number }) => point.longitude)
-  );
-  const maxLng = Math.max(
-    ...parsedRoute.map((point: { longitude: number }) => point.longitude)
-  );
+  const minLat = Math.min(...parsedRoute.map((point: { latitude: number }) => point.latitude));
+  const maxLat = Math.max(...parsedRoute.map((point: { latitude: number }) => point.latitude));
+  const minLng = Math.min(...parsedRoute.map((point: { longitude: number }) => point.longitude));
+  const maxLng = Math.max(...parsedRoute.map((point: { longitude: number }) => point.longitude));
 
   const latitudeDelta = maxLat - minLat + 0.05;
   const longitudeDelta = maxLng - minLng + 0.05;
@@ -73,39 +65,17 @@ export default function LastRideScreen() {
   return (
     <View style={styles.container}>
       <MapView style={styles.map} initialRegion={region}>
-        {parsedRoute.length > 1 && (
-          <Polyline
-            coordinates={parsedRoute}
-            strokeWidth={4}
-            strokeColor='blue'
-          />
-        )}
+        {parsedRoute.length > 1 && <Polyline coordinates={parsedRoute} strokeWidth={4} strokeColor='blue' />}
 
         {initialPoint && (
-          <Marker
-            coordinate={initialPoint}
-            title='Start'
-            description='Route start point'
-            pinColor='green'
-          />
+          <Marker coordinate={initialPoint} title='Start' description='Route start point' pinColor='green' />
         )}
-        {lastPoint && (
-          <Marker
-            coordinate={lastPoint}
-            title='End'
-            description='Route end point'
-            pinColor='red'
-          />
-        )}
+        {lastPoint && <Marker coordinate={lastPoint} title='End' description='Route end point' pinColor='red' />}
       </MapView>
 
       <View style={styles.infoPanel}>
-        <Text style={styles.text}>
-          Max Speed: {Number(maxSpeed).toFixed(2)} km/h
-        </Text>
-        <Text style={styles.text}>
-          Average Speed: {Number(avgSpeed).toFixed(2)} km/h
-        </Text>
+        <Text style={styles.text}>Max Speed: {Number(maxSpeed).toFixed(2)} km/h</Text>
+        <Text style={styles.text}>Average Speed: {Number(avgSpeed).toFixed(2)} km/h</Text>
         <Text style={styles.text}>
           Total Distance:{' '}
           {Number(totalDistance) < 1
@@ -113,14 +83,10 @@ export default function LastRideScreen() {
             : `${Number(totalDistance).toFixed(2)} km`}
         </Text>
         <Text style={styles.text}>
-          Time Taken: {Math.floor(Number(timeTaken) / 60)} min{' '}
-          {Math.floor(Number(timeTaken) % 60)} sec
+          Time Taken: {Math.floor(Number(timeTaken) / 60)} min {Math.floor(Number(timeTaken) % 60)} sec
         </Text>
         <Button title='Save Route' onPress={saveRoute} />
-        <Button
-          title='Back to Tracking'
-          onPress={() => router.push('/(tabs)/route-tracker')}
-        />
+        <Button title='Back to Tracking' onPress={() => router.push('/(tabs)/route-tracker')} />
       </View>
     </View>
   );

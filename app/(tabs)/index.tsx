@@ -5,9 +5,7 @@ export default function TabsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Welcome to the Route Tracker</Text>
-      <Text style={styles.text}>
-        This is a simple app that allows you to track your motorcycle rides.
-      </Text>
+      <Text style={styles.text}>This is a simple app that allows you to track your motorcycle rides.</Text>
     </View>
   );
 }

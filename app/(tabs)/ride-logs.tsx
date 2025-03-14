@@ -1,14 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import {
-  Button,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function LogsScreen() {
   const [routes, setRoutes] = useState<any[]>([]);
@@ -34,9 +27,7 @@ export default function LogsScreen() {
       style={styles.routeItem}
       onPress={() => router.push(`/ride-logs/${item.timestamp}`)} // Navigate to route details screen
     >
-      <Text style={styles.routeText}>
-        Date: {new Date(item.timestamp).toLocaleString()}
-      </Text>
+      <Text style={styles.routeText}>Date: {new Date(item.timestamp).toLocaleString()}</Text>
       <Text style={styles.routeText}>Distance: {item.totalDistance} km</Text>
     </TouchableOpacity>
   );
@@ -47,16 +38,9 @@ export default function LogsScreen() {
       {routes.length === 0 ? (
         <Text>No rides saved yet.</Text>
       ) : (
-        <FlatList
-          data={routes}
-          renderItem={renderItem}
-          keyExtractor={(item: any) => item.timestamp}
-        />
+        <FlatList data={routes} renderItem={renderItem} keyExtractor={(item: any) => item.timestamp} />
       )}
-      <Button
-        title='Back to Tracker'
-        onPress={() => router.push('/(tabs)/route-tracker')}
-      />
+      <Button title='Back to Tracker' onPress={() => router.push('/(tabs)/route-tracker')} />
     </View>
   );
 }
