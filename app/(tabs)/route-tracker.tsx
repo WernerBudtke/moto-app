@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { getDistance } from 'geolib';
 import React, { useEffect, useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
@@ -14,6 +14,7 @@ interface LocationPoint {
 }
 
 export default function RouteTrackerScreen() {
+  const router = useRouter();
   const [tracking, setTracking] = useState<boolean>(false);
   const [route, setRoute] = useState<LocationPoint[]>([]);
   const [speed, setSpeed] = useState<number>(0);
@@ -68,17 +69,18 @@ export default function RouteTrackerScreen() {
             };
 
             // Filter out noisy data
-            if (route.length > 0) {
-              const prevPoint = route[route.length - 1];
-              const distance = getDistance(prevPoint, newPoint) / 1000;
-              if (distance < 0.01) {
-                // Ignore updates with less than 10 meters difference
-                return;
+            setRoute((prevRoute) => {
+              if (prevRoute.length > 0) {
+                const prevPoint = prevRoute[prevRoute.length - 1];
+                const distance = getDistance(prevPoint, newPoint) / 1000;
+                if (distance < 0.01) {
+                  // Ignore updates with less than 10 meters difference
+                  return prevRoute;
+                }
+                setTotalDistance((prevDistance) => prevDistance + distance);
               }
-              setTotalDistance((prevDistance) => prevDistance + distance);
-            }
-
-            setRoute((prevRoute) => [...prevRoute, newPoint]);
+              return [...prevRoute, newPoint];
+            });
 
             const currentSpeed = location.coords.speed ? location.coords.speed * 3.6 : 0;
             setSpeed(currentSpeed);
