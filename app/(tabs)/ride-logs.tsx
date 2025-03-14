@@ -1,21 +1,27 @@
-import React, { useState, useCallback } from "react";
-import { View, Text, StyleSheet, Button, FlatList, TouchableOpacity } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
-import { useFocusEffect } from "expo-router";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import {
+  Button,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function LogsScreen() {
   const [routes, setRoutes] = useState<any[]>([]);
-  
+
   // Load saved routes from AsyncStorage
   const loadRoutes = useCallback(async () => {
     try {
-      const savedRoutes = await AsyncStorage.getItem("routes");
+      const savedRoutes = await AsyncStorage.getItem('routes');
       if (savedRoutes) {
         setRoutes(JSON.parse(savedRoutes));
       }
     } catch (error) {
-      console.error("Error loading routes:", error);
+      console.error('Error loading routes:', error);
     }
   }, []);
 
@@ -28,7 +34,9 @@ export default function LogsScreen() {
       style={styles.routeItem}
       onPress={() => router.push(`/ride-logs/${item.timestamp}`)} // Navigate to route details screen
     >
-      <Text style={styles.routeText}>Date: {new Date(item.timestamp).toLocaleString()}</Text>
+      <Text style={styles.routeText}>
+        Date: {new Date(item.timestamp).toLocaleString()}
+      </Text>
       <Text style={styles.routeText}>Distance: {item.totalDistance} km</Text>
     </TouchableOpacity>
   );
@@ -45,14 +53,22 @@ export default function LogsScreen() {
           keyExtractor={(item: any) => item.timestamp}
         />
       )}
-      <Button title="Back to Tracker" onPress={() => router.push("/(tabs)/route-tracker")} />
+      <Button
+        title='Back to Tracker'
+        onPress={() => router.push('/(tabs)/route-tracker')}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10 },
-  header: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
-  routeItem: { marginBottom: 15, padding: 10, backgroundColor: "#a19c9c", borderRadius: 5 },
+  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
+  routeItem: {
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#a19c9c',
+    borderRadius: 5,
+  },
   routeText: { fontSize: 16, marginVertical: 2 },
 });
