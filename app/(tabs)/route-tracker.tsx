@@ -21,16 +21,29 @@ interface LocationPoint {
   longitude: number;
 }
 
+interface TrackerState {
+  tracking: boolean;
+  route: LocationPoint[];
+  speed: number;
+  maxSpeed: number;
+  startTime: Date | null;
+  currentLocation: LocationPoint | null;
+  region: Region | null;
+  totalDistance: number;
+}
+
 export default function RouteTrackerScreen() {
   const router = useRouter();
-  const [tracking, setTracking] = useState<boolean>(false);
-  const [route, setRoute] = useState<LocationPoint[]>([]);
-  const [speed, setSpeed] = useState<number>(0);
-  const [maxSpeed, setMaxSpeed] = useState<number>(0);
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<LocationPoint | null>(null);
-  const [region, setRegion] = useState<Region | null>(null);
-  const [totalDistance, setTotalDistance] = useState<number>(0);
+  const [state, setState] = useState<TrackerState>({
+    tracking: false,
+    route: [],
+    speed: 0,
+    maxSpeed: 0,
+    startTime: null,
+    currentLocation: null,
+    region: null,
+    totalDistance: 0,
+  });
 
   useEffect(() => {
     (async () => {
@@ -43,21 +56,28 @@ export default function RouteTrackerScreen() {
       let location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
 
-      setCurrentLocation({ latitude, longitude });
-      setRegion({
-        latitude,
-        longitude,
-        latitudeDelta: LATITUDE_DELTA,
-        longitudeDelta: LONGITUDE_DELTA,
-      });
+      setState((prevState) => ({
+        ...prevState,
+        currentLocation: { latitude, longitude },
+        region: {
+          latitude,
+          longitude,
+          latitudeDelta: LATITUDE_DELTA,
+          longitudeDelta: LONGITUDE_DELTA,
+        },
+      }));
     })();
   }, []);
 
   useEffect(() => {
     let subscription: Location.LocationSubscription | null | undefined;
 
-    if (tracking) {
-      setStartTime(new Date());
+    if (state.tracking) {
+      setState((prevState) => ({
+        ...prevState,
+        startTime: new Date(),
+      }));
+
       (async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -68,7 +88,7 @@ export default function RouteTrackerScreen() {
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
-            distanceInterval: DISTANCE_INTERVAL, // Increase the distance interval to 20 meters
+            distanceInterval: DISTANCE_INTERVAL,
           },
           (location) => {
             const newPoint = {
@@ -76,79 +96,93 @@ export default function RouteTrackerScreen() {
               longitude: location.coords.longitude,
             };
 
-            // Filter out noisy data
-            setRoute((prevRoute) => {
+            setState((prevState) => {
+              const prevRoute = prevState.route;
+              const prevDistance = prevState.totalDistance;
+              const prevMaxSpeed = prevState.maxSpeed;
+
+              let newRoute = [...prevRoute];
+              let newDistance = prevDistance;
+              let newMaxSpeed = prevMaxSpeed;
+
               if (prevRoute.length > 0) {
                 const prevPoint = prevRoute[prevRoute.length - 1];
                 const distance = getDistance(prevPoint, newPoint) / 1000;
-                if (distance < MIN_DISTANCE_DIFFERENCE) {
-                  // Ignore updates with less than 10 meters difference
-                  return prevRoute;
+                if (distance >= MIN_DISTANCE_DIFFERENCE) {
+                  newRoute = [...prevRoute, newPoint];
+                  newDistance += distance;
                 }
-                setTotalDistance((prevDistance) => prevDistance + distance);
+              } else {
+                newRoute = [newPoint];
               }
-              return [...prevRoute, newPoint];
+
+              const currentSpeed = location.coords.speed ? location.coords.speed * 3.6 : 0;
+              if (currentSpeed > MIN_SPEED_THRESHOLD) {
+                newMaxSpeed = Math.max(prevMaxSpeed, currentSpeed);
+              }
+
+              return {
+                ...prevState,
+                route: newRoute,
+                totalDistance: newDistance,
+                speed: currentSpeed,
+                maxSpeed: newMaxSpeed,
+                currentLocation: newPoint,
+              };
             });
-
-            const currentSpeed = location.coords.speed ? location.coords.speed * 3.6 : 0;
-            setSpeed(currentSpeed);
-
-            // Filter out noisy speed data
-            if (currentSpeed > MIN_SPEED_THRESHOLD) {
-              // Ignore speeds less than 1 km/h as noise
-              setMaxSpeed((prevMaxSpeed) => Math.max(prevMaxSpeed, currentSpeed));
-            }
-
-            setCurrentLocation(newPoint);
           }
         );
 
         // Start background tracking
         await Location.startLocationUpdatesAsync(BACKGROUND_TRACKING, {
           accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: DISTANCE_INTERVAL, // Increase the distance interval to 20 meters
-          deferredUpdatesInterval: DEFERRED_UPDATES_INTERVAL, // Send updates every second
+          distanceInterval: DISTANCE_INTERVAL,
+          deferredUpdatesInterval: DEFERRED_UPDATES_INTERVAL,
           foregroundService: {
             notificationTitle: 'Your motorcycle ride is being tracked.',
-            notificationBody: `${speed.toFixed(2)} km/h - ${totalDistance.toFixed(2)} km traveled`,
+            notificationBody: `${state.speed.toFixed(2)} km/h - ${state.totalDistance.toFixed(2)} km traveled`,
           },
         });
       })();
     } else {
       subscription?.remove();
       Location.stopLocationUpdatesAsync(BACKGROUND_TRACKING);
-      if (startTime) {
+      if (state.startTime) {
         const endTime = new Date();
-        const timeTaken = (endTime.getTime() - startTime.getTime()) / 1000; // in seconds
-        const avgSpeed = totalDistance / (timeTaken / 3600); // in km/h
+        const timeTaken = (endTime.getTime() - state.startTime.getTime()) / 1000; // in seconds
+        const avgSpeed = state.totalDistance / (timeTaken / 3600); // in km/h
 
         // Navigate to the summary tab with the data
         router.push(
-          `/(tabs)/last-ride?route=${JSON.stringify(
-            route
-          )}&maxSpeed=${maxSpeed}&avgSpeed=${avgSpeed}&totalDistance=${totalDistance}&timeTaken=${timeTaken}`
+          `/(tabs)/last-ride?route=${JSON.stringify(state.route)}&maxSpeed=${
+            state.maxSpeed
+          }&avgSpeed=${avgSpeed}&totalDistance=${state.totalDistance}&timeTaken=${timeTaken}`
         );
       }
       // Reset state values
-      setRoute([]);
-      setSpeed(0);
-      setMaxSpeed(0);
-      setStartTime(null);
-      setCurrentLocation(null);
-      setTotalDistance(0);
+      setState({
+        tracking: false,
+        route: [],
+        speed: 0,
+        maxSpeed: 0,
+        startTime: null,
+        currentLocation: null,
+        region: null,
+        totalDistance: 0,
+      });
     }
 
     return () => {
       subscription?.remove();
     };
-  }, [tracking]);
+  }, [state.tracking]);
 
   return (
     <View style={styles.container}>
       <MapView
         style={styles.map}
         region={
-          region || {
+          state.region || {
             latitude: 0,
             longitude: 0,
             latitudeDelta: LATITUDE_DELTA,
@@ -159,17 +193,21 @@ export default function RouteTrackerScreen() {
         followsUserLocation
         zoomEnabled
       >
-        {route.length > 1 && <Polyline coordinates={route} strokeWidth={4} strokeColor='red' />}
-        {currentLocation && <Marker coordinate={currentLocation} title='You' />}
+        {state.route.length > 1 && <Polyline coordinates={state.route} strokeWidth={4} strokeColor='red' />}
+        {state.currentLocation && <Marker coordinate={state.currentLocation} title='You' />}
       </MapView>
 
       <View style={styles.infoPanel}>
-        <Text style={styles.text}>Speed: {speed.toFixed(2)} km/h</Text>
+        <Text style={styles.text}>Speed: {state.speed.toFixed(2)} km/h</Text>
         <Text style={styles.text}>
-          Time: {startTime ? `${((new Date().getTime() - startTime.getTime()) / 1000).toFixed(0)} sec` : '0 sec'}
+          Time:{' '}
+          {state.startTime ? `${((new Date().getTime() - state.startTime.getTime()) / 1000).toFixed(0)} sec` : '0 sec'}
         </Text>
-        <Text style={styles.text}>Distance: {totalDistance.toFixed(2)} km</Text>
-        <Button title={tracking ? 'Stop Tracking' : 'Start Tracking'} onPress={() => setTracking(!tracking)} />
+        <Text style={styles.text}>Distance: {state.totalDistance.toFixed(2)} km</Text>
+        <Button
+          title={state.tracking ? 'Stop Tracking' : 'Start Tracking'}
+          onPress={() => setState((prevState) => ({ ...prevState, tracking: !prevState.tracking }))}
+        />
       </View>
     </View>
   );
