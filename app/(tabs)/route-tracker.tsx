@@ -8,6 +8,14 @@ import MapView, { Marker, Polyline, Region } from 'react-native-maps';
 // Define the background task name
 const BACKGROUND_TRACKING = 'background-location-task';
 
+// Configuration constants
+const DISTANCE_INTERVAL = 1; // meters
+const DEFERRED_UPDATES_INTERVAL = 1000; // milliseconds
+const MIN_DISTANCE_DIFFERENCE = 0.001; // kilometers
+const MIN_SPEED_THRESHOLD = 0.25; // km/h
+const LATITUDE_DELTA = 0.01;
+const LONGITUDE_DELTA = 0.01;
+
 interface LocationPoint {
   latitude: number;
   longitude: number;
@@ -39,8 +47,8 @@ export default function RouteTrackerScreen() {
       setRegion({
         latitude,
         longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+        latitudeDelta: LATITUDE_DELTA,
+        longitudeDelta: LONGITUDE_DELTA,
       });
     })();
   }, []);
@@ -60,7 +68,7 @@ export default function RouteTrackerScreen() {
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
-            distanceInterval: 20, // Increase the distance interval to 20 meters
+            distanceInterval: DISTANCE_INTERVAL, // Increase the distance interval to 20 meters
           },
           (location) => {
             const newPoint = {
@@ -73,7 +81,7 @@ export default function RouteTrackerScreen() {
               if (prevRoute.length > 0) {
                 const prevPoint = prevRoute[prevRoute.length - 1];
                 const distance = getDistance(prevPoint, newPoint) / 1000;
-                if (distance < 0.01) {
+                if (distance < MIN_DISTANCE_DIFFERENCE) {
                   // Ignore updates with less than 10 meters difference
                   return prevRoute;
                 }
@@ -86,7 +94,7 @@ export default function RouteTrackerScreen() {
             setSpeed(currentSpeed);
 
             // Filter out noisy speed data
-            if (currentSpeed > 1) {
+            if (currentSpeed > MIN_SPEED_THRESHOLD) {
               // Ignore speeds less than 1 km/h as noise
               setMaxSpeed((prevMaxSpeed) => Math.max(prevMaxSpeed, currentSpeed));
             }
@@ -98,8 +106,8 @@ export default function RouteTrackerScreen() {
         // Start background tracking
         await Location.startLocationUpdatesAsync(BACKGROUND_TRACKING, {
           accuracy: Location.Accuracy.BestForNavigation,
-          distanceInterval: 20, // Increase the distance interval to 20 meters
-          deferredUpdatesInterval: 1000, // Send updates every second
+          distanceInterval: DISTANCE_INTERVAL, // Increase the distance interval to 20 meters
+          deferredUpdatesInterval: DEFERRED_UPDATES_INTERVAL, // Send updates every second
           foregroundService: {
             notificationTitle: 'Your motorcycle ride is being tracked.',
             notificationBody: `${speed.toFixed(2)} km/h - ${totalDistance.toFixed(2)} km traveled`,
@@ -143,8 +151,8 @@ export default function RouteTrackerScreen() {
           region || {
             latitude: 0,
             longitude: 0,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
+            latitudeDelta: LATITUDE_DELTA,
+            longitudeDelta: LONGITUDE_DELTA,
           }
         }
         showsUserLocation
